@@ -93,6 +93,10 @@ export default function ScannerScreen({ navigation }) {
             {item.barcode && !isScanned && (
               <Text style={styles.expectedBarcode}>Esp: {item.barcode}</Text>
             )}
+            {item.inRemito && <Text style={styles.itemStatus}>En Remito</Text>}
+            {item.inCollection && (
+              <Text style={styles.colectadaStatus}>En Colectada</Text>
+            )}
           </View>
         </View>
         {isScanned && (
@@ -301,6 +305,22 @@ const styles = StyleSheet.create({
   itemName: { fontSize: 14, fontWeight: "600", color: "#1e293b" },
   skuRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 1 },
   itemSku: { fontSize: 11, color: "#64748b" },
+  itemStatus: {
+    fontSize: 11,
+    color: "#080808",
+    backgroundColor: "#8cc99b",
+    borderRadius: 15,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+  },
+  colectadaStatus: {
+    fontSize: 11,
+    color: "#0d0d0d",
+    backgroundColor: "#a4a9de",
+    borderRadius: 15,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+  },
   expectedBarcode: { fontSize: 10, color: "#2563eb", fontStyle: "italic" },
   scannedBadge: {
     backgroundColor: "#10b981",

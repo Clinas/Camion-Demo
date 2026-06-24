@@ -25,7 +25,7 @@ export const CAMIONES = [
 export const PEDIDOS = {
   'ORD-101': {
     id: 'ORD-101',
-    client: 'Corralón El Amigo',
+    client: 'Frigorífico El Amigo',
     delivery_order: 1,
     items: [
       { id: 'I-101-1', articuloId: 'A001', cantidad: 5 },
@@ -34,7 +34,7 @@ export const PEDIDOS = {
   },
   'ORD-102': {
     id: 'ORD-102',
-    client: 'Constructora Norte',
+    client: 'Abasto Norte',
     delivery_order: 2,
     items: [
       { id: 'I-102-1', articuloId: 'A003', cantidad: 5 },
@@ -42,7 +42,7 @@ export const PEDIDOS = {
   },
   'ORD-103': {
     id: 'ORD-103',
-    client: 'Ferretería Central',
+    client: 'Abasto Central',
     delivery_order: 1,
     items: [
       { id: 'I-103-1', articuloId: 'A004', cantidad: 4 },
