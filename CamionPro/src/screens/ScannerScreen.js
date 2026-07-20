@@ -150,7 +150,7 @@ export default function ScannerScreen({ navigation }) {
           <View style={styles.skuRow}>
             <Text style={styles.itemSku}>ID: {item.articuloId}</Text>
             {item.barcode && !isScanned && (
-              <Text style={styles.expectedBarcode}>Esp: {item.barcode}</Text>
+              <Text style={styles.expectedBarcode}>Barcode: {item.barcode}</Text>
             )}
             {item.outOfOrder && (
               <Text style={styles.outOfOrderInline}>Fuera de orden</Text>
@@ -191,13 +191,6 @@ export default function ScannerScreen({ navigation }) {
         <View style={styles.headerTitleContainer}>
           <Text style={styles.headerSubtitle}>{selectedTruck?.plate}</Text>
         </View>
-        <TouchableOpacity style={styles.statusToggle} onPress={toggleOffline}>
-          {isOffline ? (
-            <WifiOff color="#f59e0b" size={20} />
-          ) : (
-            <Wifi color="#10b981" size={20} />
-          )}
-        </TouchableOpacity>
       </View>
 
       {/* 2. BANNER (FLEX: AUTO) */}
