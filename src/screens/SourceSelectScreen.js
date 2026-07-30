@@ -1,20 +1,39 @@
 import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from "react-native";
 import { useStore } from "../context/StoreContext";
-import { CheckCircle2, ArrowLeft, Settings2, AlertTriangle } from "lucide-react-native";
-import { PEDIDOS } from "../data/mockData";
+import { CheckCircle2, ArrowLeft, Boxes, Hash, Layers3, AlertTriangle, Circle } from "lucide-react-native";
 
 export default function SourceSelectScreen({ navigation }) {
-  const { selectedTruck, expectedItems, controlIssues } = useStore();
+  const { selectedTruck, expectedItems, controlIssues, stageCompletions, selectControlStage } = useStore();
   const isBlocked = controlIssues.length > 0;
-  const sourceByOrder = expectedItems.reduce((acc, item) => {
-    acc[item.orderId] = item.sourceLabel;
-    return acc;
-  }, {});
 
-  const handleStart = () => {
-    if (!isBlocked) navigation.navigate("Scanner");
+  const handleStart = (stageId) => {
+    if (!isBlocked) {
+      selectControlStage(stageId);
+      navigation.navigate("Scanner");
+    }
   };
+  const countFor = (group) =>
+    expectedItems.filter(
+      (item) =>
+        item.grupoArticulo === group &&
+        !(group === "CAJAS" ? stageCompletions.cajas : stageCompletions.correlativos),
+    ).length;
+  const bothDone = Boolean(stageCompletions.cajas && stageCompletions.correlativos);
+  const stages = [
+    { id: "cajas", title: "Control de cajas", description: `${countFor("CAJAS")} productos del grupo CAJAS`, icon: Boxes, done: stageCompletions.cajas },
+    { id: "correlativos", title: "Control de correlativos", description: `${countFor("CORRELATIVOS")} productos del grupo CORRELATIVOS`, icon: Hash, done: stageCompletions.correlativos },
+    {
+      id: "completo",
+      title: "Hacer todo junto",
+      description:
+        stageCompletions.cajas || stageCompletions.correlativos
+          ? "Controlar solamente las etapas que aun estan pendientes"
+          : "Controlar cajas y correlativos en una sola operacion",
+      icon: Layers3,
+      done: bothDone,
+    },
+  ];
 
   return (
     <View style={styles.container}>
@@ -22,46 +41,52 @@ export default function SourceSelectScreen({ navigation }) {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtnHeader}>
           <ArrowLeft color="#1e293b" size={24} />
         </TouchableOpacity>
-        <Text style={styles.headerNavTitle}>Configurar Control</Text>
+        <Text style={styles.headerNavTitle}>Seleccionar etapa</Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} style={{ flex: 1 }}>
         <View style={styles.truckInfoCard}>
-          <Settings2 color="#2563eb" size={24} />
+          <Layers3 color="#2563eb" size={24} />
           <View style={{ marginLeft: 12 }}>
             <Text style={styles.truckPlate}>{selectedTruck?.plate}</Text>
             <Text style={styles.truckDriver}>{selectedTruck?.driver}</Text>
           </View>
         </View>
 
-        <Text style={styles.sectionLabel}>LISTA EFECTIVA DE CONTROL</Text>
+        <Text style={styles.sectionLabel}>CONTROL DE CARGA</Text>
 
         <View style={styles.card}>
           <Text style={styles.ruleText}>
-            Remito reemplaza a colectada. Colectada reemplaza a pedido. Pedido solo se usa si todos sus productos tienen codigo especifico.
+            Los productos se separan por grupo de articulos. El control general queda finalizado cuando Cajas y Correlativos estan cumplidos.
           </Text>
-
-          {selectedTruck?.orders
-            .map((id) => PEDIDOS[id])
-            .filter(Boolean)
-            .sort((a, b) => b.delivery_order - a.delivery_order)
-            .map((order) => (
-              <View key={order.id} style={styles.option}>
+          {stages.map((stage) => {
+            const Icon = stage.icon;
+            return (
+              <TouchableOpacity
+                key={stage.id}
+                style={[styles.option, stage.done && styles.optionDone]}
+                onPress={() => handleStart(stage.id)}
+                disabled={isBlocked || Boolean(stage.done)}
+              >
+                <Icon color={stage.done ? "#15803d" : "#2563eb"} size={24} />
                 <View style={styles.optionInfo}>
-                  <Text style={styles.optionTitle}>
-                    {order.id} - {order.client}
-                  </Text>
-                  <Text style={styles.optionDesc}>
-                    Entrega #{order.delivery_order} - se carga en orden inverso
-                  </Text>
+                  <Text style={styles.optionTitle}>{stage.title}</Text>
+                  <Text style={styles.optionDesc}>{stage.description}</Text>
+                  {stage.done?.observation ? (
+                    <Text style={styles.observation}>Observ. del Operador: {stage.done.observation}</Text>
+                  ) : null}
+                  {stage.done?.findings?.length > 0 ? (
+                    <Text style={styles.findings}>
+                      Advertencias: {stage.done.findings.join(" · ")}
+                    </Text>
+                  ) : stage.done ? (
+                    <Text style={styles.noFindings}>Sin advertencias.</Text>
+                  ) : null}
                 </View>
-                <View style={[styles.sourceBadge, !sourceByOrder[order.id] && styles.sourceBadgeError]}>
-                  <Text style={styles.sourceBadgeText}>
-                    {sourceByOrder[order.id] || "Bloqueado"}
-                  </Text>
-                </View>
-              </View>
-            ))}
+                {stage.done ? <CheckCircle2 color="#16a34a" size={22} /> : <Circle color="#94a3b8" size={22} />}
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
         {isBlocked && (
@@ -78,14 +103,7 @@ export default function SourceSelectScreen({ navigation }) {
           </View>
         )}
 
-        <TouchableOpacity
-          style={[styles.btn, isBlocked && styles.btnDisabled]}
-          onPress={handleStart}
-          disabled={isBlocked}
-        >
-          <CheckCircle2 color="#fff" size={20} style={{ marginRight: 8 }} />
-          <Text style={styles.btnText}>Comenzar Carga</Text>
-        </TouchableOpacity>
+        {bothDone && <View style={styles.completeCard}><CheckCircle2 color="#15803d" size={22} /><Text style={styles.completeText}>Control general finalizado</Text></View>}
       </ScrollView>
     </View>
   );
@@ -136,10 +154,16 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: "#f1f5f9",
     gap: 10,
+    borderRadius: 8,
+    paddingHorizontal: 8,
   },
+  optionDone: { backgroundColor: "#f0fdf4" },
   optionInfo: { flex: 1 },
   optionTitle: { fontSize: 15, fontWeight: "700", color: "#1e293b" },
   optionDesc: { fontSize: 12, color: "#64748b", marginTop: 2 },
+  observation: { fontSize: 11, color: "#15803d", marginTop: 5, fontStyle: "italic" },
+  findings: { fontSize: 11, color: "#b45309", marginTop: 4, fontWeight: "600" },
+  noFindings: { fontSize: 11, color: "#15803d", marginTop: 4, fontWeight: "600" },
   sourceBadge: {
     backgroundColor: "#dcfce7",
     borderRadius: 6,
@@ -173,4 +197,6 @@ const styles = StyleSheet.create({
   },
   btnDisabled: { backgroundColor: "#94a3b8" },
   btnText: { color: "#fff", fontSize: 17, fontWeight: "700" },
+  completeCard: { flexDirection: "row", alignItems: "center", gap: 9, backgroundColor: "#dcfce7", padding: 14, borderRadius: 8, marginTop: 16 },
+  completeText: { color: "#166534", fontWeight: "800" },
 });

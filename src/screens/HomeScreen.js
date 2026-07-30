@@ -2,7 +2,7 @@ import React from "react";
 import { View, Text, FlatList, TouchableOpacity, StyleSheet } from "react-native";
 import { useStore } from "../context/StoreContext";
 import { CAMIONES } from "../data/mockData";
-import { Truck, ChevronRight } from "lucide-react-native";
+import { Truck, ChevronRight, MonitorCheck } from "lucide-react-native";
 
 export default function HomeScreen({ navigation }) {
   const { selectTruck } = useStore();
@@ -33,9 +33,20 @@ export default function HomeScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.version}>Control V8</Text>
+      <Text style={styles.version}>Control V12</Text>
       <Text style={styles.header}>Control de Carga</Text>
       <Text style={styles.subHeader}>Seleccione un camion para iniciar</Text>
+      <TouchableOpacity
+        style={styles.webQueryButton}
+        onPress={() => navigation.navigate("ControlQuery")}
+      >
+        <MonitorCheck color="#fff" size={20} />
+        <View style={{ flex: 1 }}>
+          <Text style={styles.webQueryTitle}>Consulta web de controles</Text>
+          <Text style={styles.webQueryText}>Vista de escritorio para consultar camiones</Text>
+        </View>
+        <ChevronRight color="#bfdbfe" size={22} />
+      </TouchableOpacity>
       <FlatList
         data={CAMIONES}
         renderItem={renderTruck}
@@ -68,6 +79,17 @@ const styles = StyleSheet.create({
   list: {
     gap: 15,
   },
+  webQueryButton: {
+    backgroundColor: "#0f172a",
+    borderRadius: 10,
+    padding: 15,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 18,
+  },
+  webQueryTitle: { color: "#fff", fontSize: 15, fontWeight: "800" },
+  webQueryText: { color: "#cbd5e1", fontSize: 11, marginTop: 2 },
   truckCard: {
     backgroundColor: "#ffffff",
     borderRadius: 8,

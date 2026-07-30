@@ -36,16 +36,21 @@ export default function ScannerScreen({ navigation }) {
     selectedTruck,
     controlIssues,
     activeOrderId,
+    activeStage,
+    stageItems,
+    completeActiveStage,
   } = useStore();
   const [barcodeInput, setBarcodeInput] = useState("");
   const [statusMsg, setStatusMsg] = useState({ text: "", type: "info" });
   const [pendingScan, setPendingScan] = useState(null);
   const [selectedReason, setSelectedReason] = useState("");
   const [manualReason, setManualReason] = useState("");
+  const [finishModal, setFinishModal] = useState(false);
+  const [stageObservation, setStageObservation] = useState("");
   const inputRef = useRef(null);
 
   const sections = useMemo(() => {
-    const groups = expectedItems.reduce((acc, item) => {
+    const groups = stageItems.reduce((acc, item) => {
       if (!acc[item.orderId]) {
         acc[item.orderId] = {
           id: item.orderId,
@@ -60,7 +65,7 @@ export default function ScannerScreen({ navigation }) {
       return acc;
     }, {});
     return Object.values(groups).sort((a, b) => b.orderIndex - a.orderIndex);
-  }, [expectedItems]);
+  }, [stageItems]);
 
   const showStatus = (text, type) => {
     setStatusMsg({ text, type });
@@ -171,12 +176,35 @@ export default function ScannerScreen({ navigation }) {
     );
   };
 
-  const scannedCount = expectedItems.filter(
+  const scannedCount = stageItems.filter(
     (i) => i.status === "scanned",
   ).length;
   const progress =
-    expectedItems.length > 0 ? (scannedCount / expectedItems.length) * 100 : 0;
+    stageItems.length > 0 ? (scannedCount / stageItems.length) * 100 : 0;
   const isBlocked = controlIssues.length > 0;
+  const stageTitle = activeStage === "cajas" ? "Cajas" : activeStage === "correlativos" ? "Correlativos" : "Todo junto";
+  const finishFindings = useMemo(() => {
+    const missing = stageItems.filter((item) => item.status !== "scanned").length;
+    const outOfOrder = stageItems.filter((item) => item.outOfOrder).length;
+    const stageGroups = new Set(stageItems.map((item) => item.grupoArticulo));
+    const extras = extraItems.filter(
+      (item) => !item.articuloId || stageGroups.has(
+        expectedItems.find((expected) => expected.articuloId === item.articuloId)?.grupoArticulo,
+      ),
+    ).length;
+    const findings = [];
+    if (missing > 0) findings.push(`${missing} producto${missing === 1 ? "" : "s"} faltante${missing === 1 ? "" : "s"}`);
+    if (outOfOrder > 0) findings.push(`${outOfOrder} lectura${outOfOrder === 1 ? "" : "s"} fuera de orden`);
+    if (extras > 0) findings.push(`${extras} producto${extras === 1 ? "" : "s"} adicional${extras === 1 ? "" : "es"}`);
+    return findings;
+  }, [stageItems, extraItems, expectedItems]);
+
+  const confirmStageFinish = () => {
+    const controlFinished = completeActiveStage(stageObservation, finishFindings);
+    setFinishModal(false);
+    setStageObservation("");
+    navigation.navigate(controlFinished ? "Summary" : "SourceSelect");
+  };
 
   return (
     <View style={StyleSheet.absoluteFill}>
@@ -189,7 +217,7 @@ export default function ScannerScreen({ navigation }) {
           <ArrowLeft color="#1e293b" size={24} />
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
-          <Text style={styles.headerSubtitle}>{selectedTruck?.plate}</Text>
+          <Text style={styles.headerSubtitle}>{selectedTruck?.plate} · {stageTitle}</Text>
         </View>
       </View>
 
@@ -212,7 +240,7 @@ export default function ScannerScreen({ navigation }) {
       <View style={styles.topControl}>
         <View style={styles.progressRow}>
           <Text style={styles.progressText}>
-            {scannedCount}/{expectedItems.length} bultos
+            {scannedCount}/{stageItems.length} productos
           </Text>
           <Text style={styles.progressPercent}>{Math.round(progress)}%</Text>
         </View>
@@ -280,9 +308,9 @@ export default function ScannerScreen({ navigation }) {
       <View style={styles.footer}>
         <TouchableOpacity
           style={styles.finishBtn}
-          onPress={() => navigation.navigate("Summary")}
+          onPress={() => setFinishModal(true)}
         >
-          <Text style={styles.finishBtnText}>Finalizar Control</Text>
+          <Text style={styles.finishBtnText}>Finalizar etapa</Text>
         </TouchableOpacity>
       </View>
 
@@ -350,6 +378,45 @@ export default function ScannerScreen({ navigation }) {
               </TouchableOpacity>
               <TouchableOpacity style={styles.acceptBtn} onPress={confirmException}>
                 <Text style={styles.acceptBtnText}>Aceptar error</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={finishModal} transparent animationType="fade">
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Finalizar {stageTitle}</Text>
+            <Text style={styles.modalMessage}>
+              Puede dejar una observacion para esta etapa. Los productos pendientes quedaran informados en el reporte.
+            </Text>
+            <View style={[
+              styles.finishSummary,
+              finishFindings.length > 0 ? styles.finishSummaryWarning : styles.finishSummarySuccess,
+            ]}>
+              <Text style={styles.finishSummaryTitle}>
+                {finishFindings.length > 0 ? "Advertencias: " : "Sin Advertencias."}
+              </Text>
+              {finishFindings.length > 0 ? finishFindings.map((finding) => (
+                <Text key={finding} style={styles.finishSummaryText}>• {finding}</Text>
+              )) : (
+                <Text style={styles.finishSummaryText}>Todos los productos de la etapa fueron controlados correctamente.</Text>
+              )}
+            </View>
+            <TextInput
+              style={styles.observationInput}
+              placeholder="Observacion de la etapa (opcional)"
+              value={stageObservation}
+              onChangeText={setStageObservation}
+              multiline
+            />
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={styles.correctBtn} onPress={() => setFinishModal(false)}>
+                <Text style={styles.correctBtnText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.finishConfirmBtn} onPress={confirmStageFinish}>
+                <Text style={styles.acceptBtnText}>Confirmar</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -598,6 +665,25 @@ const styles = StyleSheet.create({
     height: 42,
     marginBottom: 8,
   },
+  observationInput: {
+    borderWidth: 1,
+    borderColor: "#cbd5e1",
+    borderRadius: 10,
+    padding: 12,
+    minHeight: 90,
+    marginTop: 16,
+    textAlignVertical: "top",
+  },
+  finishSummary: {
+    borderRadius: 10,
+    padding: 12,
+    marginTop: 14,
+    borderWidth: 1,
+  },
+  finishSummaryWarning: { backgroundColor: "#fff7ed", borderColor: "#fed7aa" },
+  finishSummarySuccess: { backgroundColor: "#f0fdf4", borderColor: "#bbf7d0" },
+  finishSummaryTitle: { color: "#1e293b", fontSize: 13, fontWeight: "800", marginBottom: 4 },
+  finishSummaryText: { color: "#475569", fontSize: 12, lineHeight: 18 },
   modalActions: { flexDirection: "row", gap: 10, marginTop: 8 },
   correctBtn: {
     flex: 1,
@@ -617,4 +703,12 @@ const styles = StyleSheet.create({
     backgroundColor: "#f59e0b",
   },
   acceptBtnText: { color: "#fff", fontWeight: "800" },
+  finishConfirmBtn: {
+    flex: 1,
+    height: 46,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#2563eb",
+  },
 });

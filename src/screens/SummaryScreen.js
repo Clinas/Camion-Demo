@@ -5,7 +5,7 @@ import { CheckCircle, AlertCircle, Package, Send, ArrowLeft } from "lucide-react
 import { PEDIDOS } from "../data/mockData";
 
 export default function SummaryScreen({ navigation }) {
-  const { expectedItems, extraItems, selectedTruck, isOffline } = useStore();
+  const { expectedItems, extraItems, selectedTruck, isOffline, stageCompletions } = useStore();
 
   const reportByOrder = useMemo(() => {
     const groups = expectedItems.reduce((acc, item) => {
@@ -82,6 +82,23 @@ export default function SummaryScreen({ navigation }) {
               <Text style={styles.statLabel}>FALTANTE</Text>
             </View>
           </View>
+        </View>
+
+        <View style={styles.stageSummary}>
+          {["cajas", "correlativos"].map((stage) => (
+            <View key={stage} style={styles.stageRow}>
+              <CheckCircle color="#10b981" size={18} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.stageTitle}>{stage === "cajas" ? "Cajas" : "Correlativos"} cumplido</Text>
+                <Text style={styles.stageObservation}>
+                  {stageCompletions[stage]?.observation || "Sin observaciones"}
+                </Text>
+                {stageCompletions[stage]?.findings?.map((finding) => (
+                  <Text key={finding} style={styles.stageFinding}>• {finding}</Text>
+                ))}
+              </View>
+            </View>
+          ))}
         </View>
 
         {reportByOrder.map((order) => {
@@ -219,6 +236,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#e2e8f0",
   },
+  stageSummary: { backgroundColor: "#fff", borderRadius: 8, padding: 14, marginBottom: 16, borderWidth: 1, borderColor: "#bbf7d0" },
+  stageRow: { flexDirection: "row", gap: 9, alignItems: "flex-start", paddingVertical: 7 },
+  stageTitle: { fontSize: 13, fontWeight: "800", color: "#166534" },
+  stageObservation: { fontSize: 12, color: "#64748b", marginTop: 2 },
+  stageFinding: { fontSize: 12, color: "#b45309", marginTop: 2 },
   extraCard: {
     backgroundColor: "#fffbeb",
     borderRadius: 8,

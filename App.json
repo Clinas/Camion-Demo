@@ -1,0 +1,13 @@
+{
+  "expo": {
+    "name": "TuProyecto",
+    "slug": "tu-proyecto",
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    },
+    "experiments": {
+      "baseUrl": "."
+    }
+  }
+}

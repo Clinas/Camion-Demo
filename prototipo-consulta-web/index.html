@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Consulta de controles de carga</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">LOGÍSTICA · PROTOTIPO</p>
+        <h1>Consulta de controles de carga</h1>
+      </div>
+      <div class="topbar-actions">
+        <label class="search">
+          <span aria-hidden="true">⌕</span>
+          <input id="searchInput" type="search" placeholder="Patente, camión o chofer…" />
+        </label>
+        <span class="version">HTML V1</span>
+      </div>
+    </header>
+
+    <main class="workspace">
+      <aside class="sidebar">
+        <div class="sidebar-heading">
+          <div>
+            <p class="eyebrow">CAMIONES</p>
+            <p id="truckCount" class="muted"></p>
+          </div>
+          <button id="clearSearch" class="text-button" type="button">Limpiar</button>
+        </div>
+        <div id="truckList" class="truck-list"></div>
+      </aside>
+
+      <section id="detail" class="detail" aria-live="polite"></section>
+    </main>
+
+    <template id="emptyTemplate">
+      <div class="empty-state">
+        <div class="empty-icon">⇥</div>
+        <h2>Seleccione un camión</h2>
+        <p>Consulte el control, los remitos y el detalle histórico de sus comprobantes.</p>
+      </div>
+    </template>
+
+    <script src="data.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>

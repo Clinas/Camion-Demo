@@ -3,6 +3,11 @@ import { CAMIONES, PEDIDOS, COLECTAS, REMITOS, ARTICULOS } from "../data/mockDat
 
 const StoreContext = createContext();
 const ADVANCE_ORDER_REASON = "No hay mas productos del pedido esperado";
+export const CONTROL_STAGES = {
+  cajas: { id: "cajas", label: "Cajas", groups: ["CAJAS"] },
+  correlativos: { id: "correlativos", label: "Correlativos", groups: ["CORRELATIVOS"] },
+  completo: { id: "completo", label: "Todo junto", groups: ["CAJAS", "CORRELATIVOS"] },
+};
 
 const getArticuloByBarcode = (barcode) =>
   Object.values(ARTICULOS).find((articulo) =>
@@ -26,7 +31,7 @@ const getSourceForOrder = (order) => {
       type: "bloqueado",
       label: "Pedido",
       rows: [],
-      issue: `El pedido ${order.id} tiene cantidades genericas y no tiene colectada ni remito con SKUs definidos.`,
+      issue: `El pedido ${order.id} tiene cantidades cajas y no tiene colectada ni remito asociado.`,
     };
   }
 
@@ -56,6 +61,7 @@ const buildExpectedItems = (truck) => {
         articuloId: row.articuloId,
         articuloName: articulo?.name || "Articulo desconocido",
         sku: articulo?.sku || row.articuloId,
+        grupoArticulo: articulo?.grupoArticulo || "SIN_GRUPO",
         barcode: row.barcode,
         status: "pending",
         orderIndex: order.delivery_order,
@@ -81,6 +87,11 @@ export const StoreProvider = ({ children }) => {
   const [expectedItems, setExpectedItems] = useState([]);
   const [controlIssues, setControlIssues] = useState([]);
   const [skippedOrderIds, setSkippedOrderIds] = useState([]);
+  const [activeStage, setActiveStage] = useState(null);
+  const [stageCompletions, setStageCompletions] = useState({
+    cajas: null,
+    correlativos: null,
+  });
 
   const selectTruck = (truck) => {
     const { expected, issues } = buildExpectedItems(truck);
@@ -90,6 +101,42 @@ export const StoreProvider = ({ children }) => {
     setExpectedItems(expected);
     setControlIssues(issues);
     setSkippedOrderIds([]);
+    setActiveStage(null);
+    setStageCompletions({ cajas: null, correlativos: null });
+  };
+
+  const selectControlStage = (stageId) => setActiveStage(stageId);
+
+  const getStageItems = (stageId = activeStage) => {
+    const stage = CONTROL_STAGES[stageId];
+    if (!stage) return expectedItems;
+    const completedGroups = [
+      stageCompletions.cajas ? "CAJAS" : null,
+      stageCompletions.correlativos ? "CORRELATIVOS" : null,
+    ].filter(Boolean);
+    return expectedItems.filter(
+      (item) =>
+        stage.groups.includes(item.grupoArticulo) &&
+        !completedGroups.includes(item.grupoArticulo),
+    );
+  };
+
+  const completeActiveStage = (observation, findings = []) => {
+    const completedAt = new Date().toISOString();
+    const completion = {
+      observation: observation?.trim() || "",
+      findings,
+      completedAt,
+    };
+    setStageCompletions((current) =>
+      activeStage === "completo"
+        ? { cajas: completion, correlativos: completion }
+        : { ...current, [activeStage]: completion },
+    );
+    setActiveStage(null);
+    return activeStage === "completo" ||
+      (activeStage === "cajas" && Boolean(stageCompletions.correlativos)) ||
+      (activeStage === "correlativos" && Boolean(stageCompletions.cajas));
   };
 
   const isDuplicate = (barcode) =>
@@ -97,7 +144,7 @@ export const StoreProvider = ({ children }) => {
     extraItems.some((s) => s.barcode === barcode);
 
   const getOrderedOrderIds = () =>
-    expectedItems.reduce((ids, item) => {
+    getStageItems().reduce((ids, item) => {
       if (!ids.includes(item.orderId)) ids.push(item.orderId);
       return ids;
     }, []);
@@ -106,7 +153,7 @@ export const StoreProvider = ({ children }) => {
     const orderedOrderIds = getOrderedOrderIds();
     return orderedOrderIds.find((orderId) =>
       !skippedOrderIds.includes(orderId) &&
-      expectedItems.some((item) => item.orderId === orderId && item.status === "pending"),
+      getStageItems().some((item) => item.orderId === orderId && item.status === "pending"),
     );
   };
 
@@ -133,8 +180,21 @@ export const StoreProvider = ({ children }) => {
       };
     }
 
+    const stage = CONTROL_STAGES[activeStage];
+    if (stage && !stage.groups.includes(articulo.grupoArticulo)) {
+      return {
+        success: false,
+        error: `${articulo.name} pertenece a la etapa ${
+          articulo.grupoArticulo === "CAJAS" ? "Cajas" : "Correlativos"
+        }.`,
+      };
+    }
+
     const matchIndex = expectedItems.findIndex(
-      (item) => item.status === "pending" && item.barcode === barcode,
+      (item) =>
+        item.status === "pending" &&
+        item.barcode === barcode &&
+        (!stage || stage.groups.includes(item.grupoArticulo)),
     );
 
     if (matchIndex === -1) {
@@ -263,6 +323,11 @@ export const StoreProvider = ({ children }) => {
         scannedItems,
         extraItems,
         controlIssues,
+        activeStage,
+        stageCompletions,
+        stageItems: getStageItems(),
+        selectControlStage,
+        completeActiveStage,
         activeOrderId,
         addScan: analyzeScan,
         acceptScanException,

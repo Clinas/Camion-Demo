@@ -8,6 +8,7 @@ import HomeScreen from './src/screens/HomeScreen';
 import SourceSelectScreen from './src/screens/SourceSelectScreen';
 import ScannerScreen from './src/screens/ScannerScreen';
 import SummaryScreen from './src/screens/SummaryScreen';
+import ControlQueryScreen from './src/screens/ControlQueryScreen';
 
 const Stack = createStackNavigator();
 
@@ -26,6 +27,7 @@ export default function App() {
           <Stack.Screen name="SourceSelect" component={SourceSelectScreen} />
           <Stack.Screen name="Scanner" component={ScannerScreen} />
           <Stack.Screen name="Summary" component={SummaryScreen} />
+          <Stack.Screen name="ControlQuery" component={ControlQueryScreen} />
         </Stack.Navigator>
       </NavigationContainer>
     </StoreProvider>
